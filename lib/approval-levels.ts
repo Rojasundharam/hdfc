@@ -91,6 +91,12 @@ export async function getApproverForLevel(serviceId: string, level: number) {
  * Get the maximum approval level for a service
  */
 export async function getMaxApprovalLevel(serviceId: string) {
+  // Validate input parameter
+  if (typeof serviceId !== 'string' || !serviceId) {
+    console.error('Invalid serviceId passed to getMaxApprovalLevel:', serviceId)
+    return 1 // Return default value instead of throwing
+  }
+  
   const { data, error } = await supabase
     .from('service_approval_levels')
     .select('level')

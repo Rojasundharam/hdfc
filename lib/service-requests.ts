@@ -351,6 +351,15 @@ export async function getServiceRequestById(id: string) {
  * Create a new service request
  */
 export async function createServiceRequest(serviceId: string, requesterId: string) {
+  // Validate input parameters
+  if (typeof serviceId !== 'string' || !serviceId) {
+    throw new Error('Invalid serviceId: must be a non-empty string')
+  }
+  
+  if (typeof requesterId !== 'string' || !requesterId) {
+    throw new Error('Invalid requesterId: must be a non-empty string')
+  }
+  
   // Get max approval level for this service
   let maxLevel = 1
   try {

@@ -75,6 +75,9 @@ export default function RequestServicePage() {
           getServices()
         ])
         
+        console.log('Fetched services:', servicesData)
+        console.log('First service structure:', servicesData[0])
+        
         setCategories(categoriesData)
         setServices(servicesData)
       } catch (err) {
@@ -143,7 +146,9 @@ export default function RequestServicePage() {
   }
   
   const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedServiceId(e.target.value)
+    const value = e.target.value
+    console.log('Service selected:', value, 'Type:', typeof value)
+    setSelectedServiceId(value)
   }
   
   const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -169,40 +174,46 @@ export default function RequestServicePage() {
       return
     }
     
-      setIsSubmitting(true)
-      setError(null)
+    // Debug logging
+    console.log('Submitting service request with:', {
+      selectedServiceId,
+      selectedServiceIdType: typeof selectedServiceId,
+      userId: user.id,
+      userIdType: typeof user.id
+    })
+    
+    setIsSubmitting(true)
+    setError(null)
       
     try {
-      const result = await createServiceRequest({
-        serviceId: selectedServiceId,
-        userId: user.id,
-        notes: notes.trim() || null,
-        file: file || null
-      })
+      const result = await createServiceRequest(selectedServiceId, user.id)
       
-      if (result.success) {
-      setSuccess(true)
+      if (result) {
+        setSuccess(true)
         // Reset form
-      setSelectedCategoryId('')
-      setSelectedServiceId('')
-      setNotes('')
-      setFile(null)
+        setSelectedCategoryId('')
+        setSelectedServiceId('')
+        setNotes('')
+        setFile(null)
         // Reset file input
         const fileInput = document.getElementById('file') as HTMLInputElement
         if (fileInput) {
           fileInput.value = ''
         }
       
+        // Refresh the requests list
+        fetchMyRequests()
+      
         // Hide success message after 5 seconds
-      setTimeout(() => {
+        setTimeout(() => {
           setSuccess(false)
         }, 5000)
       } else {
-        setError(result.error || 'Failed to submit request')
+        setError('Failed to submit request')
       }
     } catch (err) {
       console.error('Error submitting request:', err)
-      setError('An unexpected error occurred')
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
       setIsSubmitting(false)
     }
@@ -210,6 +221,8 @@ export default function RequestServicePage() {
 
   const fetchMyRequests = async () => {
     if (!user) return
+    
+    console.log('Fetching requests for user:', user.id)
     
     try {
       const { data, error } = await supabase
@@ -229,21 +242,29 @@ export default function RequestServicePage() {
             )
           )
         `)
-        .eq('user_id', user.id)
+        .eq('requester_id', user.id)
         .order('created_at', { ascending: false })
 
       if (error) {
         console.error('Error fetching requests:', error)
+        setMyRequests([])
+        return
+      }
+
+      console.log('Fetched requests data:', data)
+
+      if (!data || data.length === 0) {
+        setMyRequests([])
         return
       }
 
       const formattedRequests: ServiceRequest[] = data.map((request: any) => ({
         id: request.id,
-        service_name: request.services.name,
-        category_name: request.services.service_categories.name,
+        service_name: request.services?.name || 'Unknown Service',
+        category_name: request.services?.service_categories?.name || 'Unknown Category',
         status: request.status,
-        level: request.level,
-        max_approval_level: request.max_approval_level,
+        level: request.level || 1,
+        max_approval_level: request.max_approval_level || 1,
         created_at: request.created_at,
         updated_at: request.updated_at
       }))
