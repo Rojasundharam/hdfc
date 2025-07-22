@@ -117,8 +117,10 @@ export default function RequestServicePage() {
   
   // Fetch user's requests when "My Requests" tab is active
   useEffect(() => {
+    console.log('🔄 EFFECT TRIGGERED - activeTab:', activeTab, 'user:', !!user)
     if (activeTab === 'my-requests' && user) {
-      fetchMyRequests()
+      console.log('🎯 CALLING UPDATED fetchMyRequests function')
+      fetchMyRequestsV2024()
     }
   }, [activeTab, user])
   
@@ -202,7 +204,7 @@ export default function RequestServicePage() {
         }
       
         // Refresh the requests list
-        fetchMyRequests()
+        fetchMyRequestsV2024()
       
         // Hide success message after 5 seconds
         setTimeout(() => {
@@ -219,7 +221,7 @@ export default function RequestServicePage() {
     }
   }
 
-  const fetchMyRequests = async () => {
+  const fetchMyRequestsV2024 = async () => {
     if (!user) {
       console.log('No user found, skipping fetch')
       return
@@ -231,24 +233,39 @@ export default function RequestServicePage() {
       return
     }
     
-    console.log('Fetching requests for user:', user.id)
+    console.log('🚀 Fetching requests for user (UPDATED CODE - ' + new Date().toISOString() + '):', user.id)
     
     try {
-      // Test connection first
-      console.log('Testing Supabase connection...')
-      const { data: testData, error: testError } = await supabase
+      // Test connection and table existence
+      console.log('Testing Supabase connection and table existence...')
+      
+      // Test service_requests table
+      const { data: testRequestsData, error: testRequestsError } = await supabase
         .from('service_requests')
         .select('count')
         .limit(1)
       
-      if (testError) {
-        console.error('Connection test failed:', testError)
+      if (testRequestsError) {
+        console.error('service_requests table test failed:', testRequestsError)
       } else {
-        console.log('Connection test successful')
+        console.log('service_requests table exists and is accessible')
+      }
+      
+      // Test services table
+      const { data: testServicesData, error: testServicesError } = await supabase
+        .from('services')
+        .select('count')
+        .limit(1)
+      
+      if (testServicesError) {
+        console.error('services table test failed:', testServicesError)
+        console.error('This indicates the services table is missing. Please run the CREATE_MISSING_TABLES.sql script.')
+      } else {
+        console.log('services table exists and is accessible')
       }
       
       // Simple approach - just get the service requests without joins
-      console.log('Executing Supabase query...')
+      console.log('🔍 Executing NEW simplified Supabase query (v2.0)...')
       const { data: requestsData, error: requestsError } = await supabase
         .from('service_requests')
         .select('*')
@@ -263,6 +280,15 @@ export default function RequestServicePage() {
           hint: requestsError.hint,
           code: requestsError.code
         })
+        
+        // Check if the error is related to missing tables
+        if (requestsError.message?.includes('Could not find a relationship') || 
+            requestsError.message?.includes('services') ||
+            requestsError.code === 'PGRST200') {
+          console.error('Database schema issue detected. Missing tables may need to be created.')
+          console.error('Please run the CREATE_MISSING_TABLES.sql script in your Supabase SQL editor.')
+        }
+        
         setMyRequests([])
         return
       }
@@ -281,9 +307,9 @@ export default function RequestServicePage() {
       const formattedRequests: ServiceRequest[] = requestsData.map((request: any) => {
         const formatted = {
           id: request.id,
-          service_name: `Service ${request.service_id?.slice(0, 8)}...`,
+          service_name: request.service_id ? `Service ${request.service_id.slice(0, 8)}...` : 'Unknown Service',
           category_name: 'General',
-          status: request.status,
+          status: request.status || 'pending',
           level: request.level || 1,
           max_approval_level: request.max_approval_level || 1,
           created_at: request.created_at,
