@@ -220,58 +220,87 @@ export default function RequestServicePage() {
   }
 
   const fetchMyRequests = async () => {
-    if (!user) return
+    if (!user) {
+      console.log('No user found, skipping fetch')
+      return
+    }
+    
+    if (!supabase) {
+      console.error('Supabase client not available')
+      setMyRequests([])
+      return
+    }
     
     console.log('Fetching requests for user:', user.id)
     
     try {
-      const { data, error } = await supabase
+      // Test connection first
+      console.log('Testing Supabase connection...')
+      const { data: testData, error: testError } = await supabase
         .from('service_requests')
-        .select(`
-          id,
-          notes,
-          level,
-          max_approval_level,
-          status,
-          created_at,
-          updated_at,
-          services!inner (
-            name,
-            service_categories!inner (
-              name
-            )
-          )
-        `)
+        .select('count')
+        .limit(1)
+      
+      if (testError) {
+        console.error('Connection test failed:', testError)
+      } else {
+        console.log('Connection test successful')
+      }
+      
+      // Simple approach - just get the service requests without joins
+      console.log('Executing Supabase query...')
+      const { data: requestsData, error: requestsError } = await supabase
+        .from('service_requests')
+        .select('*')
         .eq('requester_id', user.id)
         .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('Error fetching requests:', error)
+      if (requestsError) {
+        console.error('Error fetching requests:', requestsError)
+        console.error('Error details:', {
+          message: requestsError.message,
+          details: requestsError.details,
+          hint: requestsError.hint,
+          code: requestsError.code
+        })
         setMyRequests([])
         return
       }
 
-      console.log('Fetched requests data:', data)
+      console.log('Fetched requests data:', requestsData)
 
-      if (!data || data.length === 0) {
+      if (!requestsData || requestsData.length === 0) {
+        console.log('No requests found for user')
         setMyRequests([])
         return
       }
 
-      const formattedRequests: ServiceRequest[] = data.map((request: any) => ({
-        id: request.id,
-        service_name: request.services?.name || 'Unknown Service',
-        category_name: request.services?.service_categories?.name || 'Unknown Category',
-        status: request.status,
-        level: request.level || 1,
-        max_approval_level: request.max_approval_level || 1,
-        created_at: request.created_at,
-        updated_at: request.updated_at
-      }))
+      console.log('Found', requestsData.length, 'requests')
 
+      // Create simple formatted requests without service/category names for now
+      const formattedRequests: ServiceRequest[] = requestsData.map((request: any) => {
+        const formatted = {
+          id: request.id,
+          service_name: `Service ${request.service_id?.slice(0, 8)}...`,
+          category_name: 'General',
+          status: request.status,
+          level: request.level || 1,
+          max_approval_level: request.max_approval_level || 1,
+          created_at: request.created_at,
+          updated_at: request.updated_at
+        }
+        
+        console.log('Formatted request:', formatted)
+        return formatted
+      })
+
+      console.log('Final formatted requests:', formattedRequests)
       setMyRequests(formattedRequests)
     } catch (err) {
       console.error('Error fetching requests:', err)
+      console.error('Error type:', typeof err)
+      console.error('Error stack:', err instanceof Error ? err.stack : 'No stack')
+      setMyRequests([])
     }
   }
   

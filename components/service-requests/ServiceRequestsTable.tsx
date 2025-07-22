@@ -62,7 +62,7 @@ import {
   SearchIcon,
   CalendarIcon,
   UserIcon,
-  ServiceIcon,
+  FileText,
   ClockIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -592,7 +592,7 @@ export default function ServiceRequestsTable({
       {/* Empty state */}
       {filteredAndSortedRequests.length === 0 && (
         <div className="text-center py-8 text-gray-500">
-          <ServiceIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
           <p className="text-lg font-medium">No service requests found</p>
           <p className="text-sm">Try adjusting your search or filter criteria</p>
         </div>
