@@ -21,6 +21,8 @@ interface Service {
   name: string
   description: string | null
   payment_method: 'prepaid' | 'postpaid' | 'free'
+  amount: number | null
+  currency: string | null
 }
 
 interface ServiceRequest {
@@ -216,6 +218,88 @@ export default function RequestServicePage() {
     } catch (err) {
       console.error('Error submitting request:', err)
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handlePaymentSubmit = async () => {
+    if (!selectedServiceId || !selectedService) {
+      setError('Please select a service')
+      return
+    }
+
+    if (!user) {
+      setError('You must be logged in to make a payment')
+      return
+    }
+
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      // Use dynamic pricing from service data
+      const serviceAmount = selectedService.amount || 100; // Fallback to 100 if no amount set
+      
+      // Create payment session with service details
+      const paymentData = {
+        amount: serviceAmount,
+        customerName: user.user_metadata?.full_name || user.email || 'Student',
+        customerEmail: user.email || '',
+        customerPhone: user.user_metadata?.phone || '+91 9876543210', // Default phone or get from user
+        description: `Payment for ${selectedService.name} service request`
+      }
+
+      console.log('Creating HDFC payment session:', {
+        service: selectedService.name,
+        amount: serviceAmount,
+        currency: selectedService.currency || 'INR'
+      })
+
+      const response = await fetch('/api/payment/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(paymentData),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create payment session')
+      }
+
+      if (data.success && (data.redirect_url || data.session?.payment_links?.web || data.session?.redirect_url)) {
+        console.log('HDFC payment session created, redirecting to gateway...')
+        
+        // Store service request data in localStorage to create request after payment
+        localStorage.setItem('pendingServiceRequest', JSON.stringify({
+          selectedServiceId,
+          selectedCategoryId,
+          notes,
+          orderId: data.order_id,
+          amount: serviceAmount
+        }))
+        
+        // Get the redirect URL from HDFC response
+        const redirectUrl = data.redirect_url || 
+                           data.session?.redirect_url || 
+                           data.session?.payment_links?.web;
+        
+        if (redirectUrl) {
+          // Redirect to HDFC payment gateway
+          window.location.href = redirectUrl;
+        } else {
+          throw new Error('No redirect URL received from HDFC');
+        }
+      } else {
+        throw new Error('Invalid response from HDFC payment service')
+      }
+
+    } catch (err) {
+      console.error('Payment initiation error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to initiate payment')
     } finally {
       setIsSubmitting(false)
     }
@@ -472,10 +556,30 @@ export default function RequestServicePage() {
                   
                   {/* Payment Information */}
                   {selectedService.payment_method !== 'free' && (
-                    <div className="inline-flex items-center rounded-md bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+                    <div className="space-y-2">
+                      <div className="inline-flex items-center rounded-md bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
                         {selectedService.payment_method === 'prepaid' 
-                          ? 'Requires payment before processing' 
-                          : 'Requires payment after approval'}
+                          ? '💳 Payment Required Before Processing' 
+                          : '💰 Payment Required After Approval'}
+                      </div>
+                      
+                      {selectedService.payment_method === 'prepaid' && (
+                        <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
+                          <div className="flex items-center gap-2 mb-1">
+                            <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-yellow-800 font-medium text-sm">Payment Details</span>
+                          </div>
+                                                     <p className="text-yellow-700 text-xs">
+                             Service Fee: {selectedService?.currency || 'INR'} {(selectedService?.amount || 100).toFixed(2)} 
+                             {selectedService?.amount ? '' : ' (Default fee)'}
+                           </p>
+                           <p className="text-yellow-700 text-xs">
+                             Secure payment through HDFC SmartGateway
+                           </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -515,13 +619,51 @@ export default function RequestServicePage() {
               
               {/* Submit Button */}
               <div className="pt-4">
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !selectedServiceId}
-                  className="w-full sm:w-auto min-w-[200px] bg-primary text-white py-3 px-6 rounded-md font-medium hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isSubmitting ? 'Submitting...' : 'Submit Request'}
-                </button>
+                {selectedService?.payment_method === 'prepaid' ? (
+                  /* For prepaid services, show payment button */
+                  <div className="space-y-3">
+                    <div className="bg-blue-50 border border-blue-200 p-4 rounded-md">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <h4 className="font-medium text-blue-800">Payment Required</h4>
+                      </div>
+                      <p className="text-sm text-blue-700">
+                        This service requires prepayment. You'll be redirected to our secure payment gateway.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handlePaymentSubmit}
+                      disabled={isSubmitting || !selectedServiceId}
+                      className="w-full sm:w-auto min-w-[200px] bg-blue-600 text-white py-3 px-6 rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                          Proceed to Payment
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  /* For free and postpaid services, show regular submit button */
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !selectedServiceId}
+                    className="w-full sm:w-auto min-w-[200px] bg-primary text-white py-3 px-6 rounded-md font-medium hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                  </button>
+                )}
               </div>
             </form>
           </div>

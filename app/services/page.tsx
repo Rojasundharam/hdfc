@@ -71,6 +71,8 @@ export default function ServiceListPage() {
                 <th className="px-6 py-3">#</th>
                 <th className="px-6 py-3">Name</th>
                 <th className="px-6 py-3">Description</th>
+                <th className="px-6 py-3">Payment</th>
+                <th className="px-6 py-3">Amount</th>
                 <th className="px-6 py-3">Status</th>
                 <th className="px-6 py-3 text-center">Actions</th>
               </tr>
@@ -87,6 +89,24 @@ export default function ServiceListPage() {
                   </td>
                   <td className="px-6 py-3 align-middle text-gray-700 max-w-md truncate">
                     {service.description || 'No description available'}
+                  </td>
+                  <td className="px-6 py-3 align-middle">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      service.payment_method === 'free' ? 'bg-green-100 text-green-800' : 
+                      service.payment_method === 'prepaid' ? 'bg-blue-100 text-blue-800' : 
+                      'bg-orange-100 text-orange-800'
+                    }`}>
+                      {service.payment_method?.charAt(0).toUpperCase() + service.payment_method?.slice(1) || 'Unknown'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-3 align-middle">
+                    {service.payment_method === 'free' ? (
+                      <span className="text-green-600 font-medium">Free</span>
+                    ) : (
+                      <span className="text-gray-900 font-medium">
+                        {service.currency || 'INR'} {(service.amount || 0).toFixed(2)}
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-3 align-middle">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${

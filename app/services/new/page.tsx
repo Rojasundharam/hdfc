@@ -108,6 +108,9 @@ export default function NewServicePage() {
         attachment_url: formData.get('attachment_url') as string || null,
         sla_period: parseInt(formData.get('sla_period') as string) || null,
         payment_method: formData.get('payment_method') as PaymentMethod,
+        // Only include amount and currency if migration has been run
+        ...(formData.get('amount') && { amount: parseFloat(formData.get('amount') as string) || null }),
+        ...(formData.get('currency') && { currency: formData.get('currency') as string || 'INR' }),
       }
 
       // Create the service first
@@ -131,7 +134,24 @@ export default function NewServicePage() {
       router.refresh()
     } catch (error) {
       console.error('Error creating service:', error)
-      setError(error instanceof Error ? error.message : 'Failed to create service')
+      
+      let errorMessage = 'Failed to create service'
+      
+      if (error instanceof Error) {
+        if (error.message.includes('column "amount" of relation "services" does not exist')) {
+          errorMessage = 'Database migration required: Please run the ADD_SERVICE_PRICING.sql script in Supabase SQL Editor to add pricing fields to the services table.'
+        } else if (error.message.includes('column "currency" of relation "services" does not exist')) {
+          errorMessage = 'Database migration required: Please run the ADD_SERVICE_PRICING.sql script in Supabase SQL Editor to add pricing fields to the services table.'
+        } else if (error.message.includes('Authentication required')) {
+          errorMessage = 'Please log in to create services.'
+        } else if (error.message.includes('already exists')) {
+          errorMessage = 'A service with this request number already exists. Please try again.'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -338,6 +358,50 @@ export default function NewServicePage() {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Service Amount */}
+          <div>
+            <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
+              Service Fee Amount
+            </label>
+            <div className="mt-1 relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="text-gray-500 sm:text-sm">₹</span>
+              </div>
+              <input
+                type="number"
+                id="amount"
+                name="amount"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                className="block w-full pl-7 pr-12 border border-gray-300 rounded-md py-2 px-3 shadow-sm focus:border-primary focus:outline-none focus:ring-primary"
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Leave empty for free services. Amount will be auto-set based on payment method if not specified.
+            </p>
+          </div>
+
+          {/* Currency */}
+          <div>
+            <label htmlFor="currency" className="block text-sm font-medium text-gray-700">
+              Currency
+            </label>
+            <select
+              id="currency"
+              name="currency"
+              className="mt-1 block w-full rounded-md border border-gray-300 py-2 px-3 shadow-sm focus:border-primary focus:outline-none focus:ring-primary"
+            >
+              <option value="INR">INR (Indian Rupee)</option>
+              <option value="USD">USD (US Dollar)</option>
+              <option value="EUR">EUR (Euro)</option>
+              <option value="GBP">GBP (British Pound)</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Default currency is INR. Change only if needed for international services.
+            </p>
           </div>
         </div>
 

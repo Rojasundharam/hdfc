@@ -48,7 +48,7 @@ export const ROUTES = {
   USER_MANAGEMENT: '/user-management',
   ANALYTICS: '/analytics',
   NOTIFICATIONS: '/notifications',
-
+  TRANSACTION_TRACKING: '/admin/transaction-tracking',
   
   // Account
   PROFILE: '/profile',
@@ -78,7 +78,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     ROUTES.USER_MANAGEMENT,
     ROUTES.ANALYTICS,
     ROUTES.NOTIFICATIONS,
-
+    ROUTES.TRANSACTION_TRACKING,
     ROUTES.PROFILE,
     ROUTES.LOGOUT
   ],
@@ -246,7 +246,13 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     section: 'Administration',
     requiredRoles: ['admin']
   },
-
+  {
+    href: ROUTES.TRANSACTION_TRACKING,
+    label: 'Transaction Tracking',
+    icon: 'DatabaseIcon',
+    section: 'Administration',
+    requiredRoles: ['admin']
+  },
   
   // Account (All roles)
   {

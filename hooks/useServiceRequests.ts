@@ -120,20 +120,20 @@ export function useServiceRequests(user: User | null): UseServiceRequestsReturn 
       const transformedRequests: ServiceRequest[] = (data || []).map(item => {
         try {
           return {
-            id: item.id,
-            service_id: item.service_id,
-            service_name: item.services?.name || 'Unknown Service',
-            service_category: item.services?.service_categories?.name || 'Unknown Category',
-            requester_id: item.requester_id,
-            requester_name: item.profiles?.full_name || 'Unknown User',
-            requester_email: item.profiles?.email || '',
-            status: item.status,
-            level: item.level || 1,
-            max_approval_level: item.max_approval_level || 1,
-            created_at: item.created_at,
-            updated_at: item.updated_at,
-            notes: item.notes || '',
-            rejection_reason: item.rejection_reason || ''
+        id: item.id,
+        service_id: item.service_id,
+        service_name: item.services?.name || 'Unknown Service',
+        service_category: item.services?.service_categories?.name || 'Unknown Category',
+        requester_id: item.requester_id,
+        requester_name: item.profiles?.full_name || 'Unknown User',
+        requester_email: item.profiles?.email || '',
+        status: item.status,
+        level: item.level || 1,
+        max_approval_level: item.max_approval_level || 1,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        notes: item.notes || '',
+        rejection_reason: item.rejection_reason || ''
           };
         } catch (err) {
           console.error('Error transforming service request item:', err, item);

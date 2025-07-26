@@ -42,6 +42,8 @@ export interface Service {
   attachment_url: string | null
   sla_period: number | null
   payment_method: PaymentMethod
+  amount: number | null
+  currency: string | null
   created_at: string | null
   service_categories?: ServiceCategory | null
 }

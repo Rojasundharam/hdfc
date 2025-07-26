@@ -375,8 +375,7 @@ export async function createServiceRequest(serviceId: string, requesterId: strin
       service_id: serviceId,
       requester_id: requesterId,
       status: 'pending',
-      level: 1,
-      max_approval_level: maxLevel
+      level: 1
     })
     .select()
     .single()

@@ -35,7 +35,8 @@ import {
   FolderIcon,
   BarChartIcon,
   BellIcon,
-  CogIcon
+  CogIcon,
+  DatabaseIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
@@ -89,6 +90,7 @@ function getIcon(iconName: string): React.ElementType {
     BarChartIcon,
     BellIcon,
     CogIcon,
+    DatabaseIcon,
     UserIcon,
     LogOutIcon
   };
